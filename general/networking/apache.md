@@ -7,52 +7,60 @@ title: Apache Reverse Proxy
 
 "The [Apache HTTP Server Project](https://httpd.apache.org/) is an effort to develop and maintain an open-source HTTP server for modern operating systems including UNIX and Windows. The goal of this project is to provide a secure, efficient and extensible server that provides HTTP services in sync with the current HTTP standards."
 
+Before you begin, make sure you have a sub domain of jellyfin. Also, this config uses letsencrypt to handle the SSL Certificate.
+
+Create jellyfin.example.com.conf in /etc/apache2/sites-available. Replace example.com with your domain. 
+
+```
+cd /etc/apache2/sites-available
+sudo nano jellyfin.example.com.conf
+```
+
+Use the following Apache virtual host configuration to create your reverse proxy with SSL. Replace USER with your admin username. Replace example.com with your domain name. Replace SERVER_IP with your server's IP address.
+
 ```
 <VirtualHost *:80>
-    ServerName DOMAIN_NAME
+	ServerAdmin USER@example.com
+	ServerName example.com
 
-    # Uncomment for HTTP to HTTPS redirect
-    # Redirect permanent / https://DOMAIN_NAME
+	Redirect permanent / https://example.com
 
-    ErrorLog /var/log/apache2/DOMAIN_NAME-error.log
-    CustomLog /var/log/apache2/DOMAIN_NAME-access.log combined
+	ErrorLog /var/log/apache2/example.com-error.log
+	CustomLog /var/log/apache2/example.com.log combined
+
 </VirtualHost>
 
-# Uncomment this section after you have acquired a SSL Certificate
-# If you are not using a SSL certificate, replace the 'redirect'
-# line above with all lines below starting with 'Proxy'
-#<IfModule mod_ssl.c>
-#<VirtualHost *:443>
-#    ServerName DOMAIN_NAME
-#
-#    ProxyPreserveHost On
-#
-#    ProxyPass "/socket" "ws://SERVER_IP_ADDRESS:8096/socket"
-#    ProxyPassReverse "/socket" "ws://SERVER_IP_ADDRESS:8096/socket"
-#
-#    ProxyPass "/" "http://SERVER_IP_ADDRESS:8096/"
-#    ProxyPassReverse "/" "http://SERVER_IP_ADDRESS:8096/"
-#
-#    SSLEngine on
-#    SSLCertificateFile /etc/letsencrypt/live/DOMAIN_NAME/fullchain.pem
-#    SSLCertificateKeyFile /etc/letsencrypt/live/DOMAIN_NAME/privkey.pem
-#    Protocols h2 http/1.1
-#
-#    Enable only strong encryption ciphers and prefer versions with Forward Secrecy
-#    SSLCipherSuite HIGH:RC4-SHA:AES128-SHA:!aNULL:!MD5
-#    SSLHonorCipherOrder on
-#
-#    Disable insecure SSL and TLS versions
-#    SSLProtocol all -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
-#
-#    ErrorLog /var/log/apache2/DOMAIN_NAME-error.log
-#    CustomLog /var/log/apache2/DOMAIN_NAME-access.log combined
-#</VirtualHost>
-#</IfModule>
+<IfModule mod_ssl.c>
+<VirtualHost *:443>
+	ServerAdmin USER@example.com
+	ServerName example.com
+
+	ProxyPreserveHost On
+
+	ProxyPass "/embywebsocket" "ws://SERVER_IP:8096/embywebsocket"
+	ProxyPassReverse "/embywebsocket" "ws://SERVER_IP:8096/embywebsocket"
+
+	ProxyPass "/" "http://SERVER_IP:8096/"
+	ProxyPassReverse "/" "http://SERVER_IP:8096/"
+
+	
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/example.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/example.com/privkey.pem
+    Protocols h2 http/1.1
+
+	ErrorLog /var/log/apache2/example.com-error.log
+	CustomLog /var/log/apache2/example.com.log combined
+</VirtualHost>
+</IfModule>
 ```
 
-If you encouter errors, you may have to enable `mod_proxy`, `mod_ssl`, or `proxy_wstunnel` support manually.
+Enable your new Website
+```
+sudo a2ensite jellyfin.example.com.conf
+```
 
-```bash
-$ sudo a2enmod proxy proxy_http ssl proxy_wstunnel
+Restart Apache
+```
+sudo systemctl restart apache2
 ```
